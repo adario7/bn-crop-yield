@@ -1,0 +1,13 @@
+produzione agricola
+https://esploradati.istat.it/databrowser/#/it/dw/categories/IT1,Z1000AGR,1.0/AGR_CRP/DCSP_COLTIVAZIONI/IT1,101_1015_DF_DCSP_COLTIVAZIONI_2,1.0
+
+giorni senza pioggia, durata periodi di caldo, Giorni con precipitazione estremamente intensa
+https://esploradati.istat.it/databrowser/#/it/dw/categories/IT1,Z0930TER,1.0/BES_T/IT1,DF_BES_TERRIT_10,1.0
+
+carta per il suolo italiano: https://www.researchgate.net/publication/283906875_Carta_dei_Suoli_d%27Italia_11000000_Soil_map_of_Italy_scale_11000000
+dataset per uso territorio in modo agricolo: http://dati-censimentoagricoltura.istat.it/Index.aspx?DataSetCode=DICA_UTILTERRUBI
+Elementi nutritivi contenuti per ettaro di superficie concimabile: https://esploradati.istat.it/databrowser/#/it/dw/categories/IT1,Z1000AGR,1.0/AGR_MEANS/DCSP_FERTILIZZANTI/IT1,104_466_DF_DCSP_FERTILIZZANTI_7,1.0
+Non sono riuscito a trovare nulla sul ph del terreno, almeno nella banca dati dell’istat sono sicuro che non ci sia, guardando un po’ in giro tutti si concentrano su quanto territorio è occupato per la produzione agricola
+
+temperatura e precipitazioni
+https://www.istat.it/tavole-di-dati/temperatura-e-precipitazione-nei-comuni-capoluogo-di-provincia-anno-2022-serie-storica-2006-2022/
