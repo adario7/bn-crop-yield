@@ -1,16 +1,25 @@
-import pandas as pd
+import gzip
 
-# Carica il file specificando il separatore corretto
-df = pd.read_csv('data/crops.csv.gz', sep=';', on_bad_lines='warn', compression='gzip')
+SEPARATOR_CHAR = ';'
+END_LINE = '\n'
+LAST_COLUMN_KEEPED = 'Osservazione'
 
+with gzip.open('data/crops.csv.gz', 'rt', encoding='utf-8') as reader:
+    with gzip.open('build/outputs.csv.gz', 'wt', encoding='utf-8') as writer:
+        
+        line = reader.readline()
+        cols = 0    
+        for elem in line.split(SEPARATOR_CHAR):
+            writer.write(elem)
+            cols +=1
+            if elem == LAST_COLUMN_KEEPED: break
+            writer.write(SEPARATOR_CHAR)
+        writer.write(END_LINE)
 
-print(df.columns.to_list())  # Controlla ora le colonne corrette
-
-# Trova l'indice della colonna 'OBS_STATUS'
-col_index = df.columns.get_loc('OBS_STATUS')
-
-# Seleziona tutte le colonne fino a 'OBS_STATUS' esclusa
-df_filtered = df.iloc[:, :col_index]
-
-# Salva il dataframe filtrato
-df_filtered.to_csv('build/outputs.csv.gz', index=False, sep=';', compression='gzip')
+        line = reader.readline()
+        while line != "":
+            elems = line.split(SEPARATOR_CHAR)
+            for i in range(cols -1):
+                writer.write(elems[i] + SEPARATOR_CHAR)
+            writer.write(elems[cols -1] + END_LINE)
+            line = reader.readline()
