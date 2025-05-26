@@ -8,7 +8,7 @@ from collections import defaultdict
 # --- Configuration ---
 DATA_DIR = 'data'
 BUILD_DIR = 'build'
-OUTPUT_FILE = os.path.join(BUILD_DIR, 'environment.csv.gz')
+OUTPUT_FILE = os.path.join(BUILD_DIR, 'inputs.csv.gz')
 
 FILE_PIOGGIA = os.path.join(DATA_DIR, 'pioggia.csv.gz')
 FILE_PRECIPITAZIONE = os.path.join(DATA_DIR, 'precipitazione-annua.csv.gz')

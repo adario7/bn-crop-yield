@@ -3,8 +3,8 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 # Carica i dati
-df_raccolto = pd.read_csv("build/dataset_filtrato.csv", delimiter=';')
-df_clima = pd.read_csv("build/environment.csv", delimiter=';')
+df_raccolto = pd.read_csv("build/outputs.csv.gz", delimiter=';', compression='gzip')
+df_clima = pd.read_csv("build/inputs.csv.gz", delimiter=';', compression='gzip')
 
 # Colonne da rimuovere da df_clima
 col_da_rimuovere = [
@@ -70,4 +70,4 @@ df_finale = pd.merge(
 df_finale.fillna(df_finale.mean(numeric_only=True), inplace=True)
 
 # Salva il file finale
-df_finale.to_csv("dataset_finale.csv", index=False)
+df_finale.to_csv("build/dataset.csv.gz", index=False, compression='gzip')

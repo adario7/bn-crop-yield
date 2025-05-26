@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Carica il file specificando il separatore corretto
-df = pd.read_csv('data/crops.csv', sep=';', on_bad_lines='warn')
+df = pd.read_csv('data/crops.csv.gz', sep=';', on_bad_lines='warn', compression='gzip')
 
 
 print(df.columns.to_list())  # Controlla ora le colonne corrette
@@ -13,4 +13,4 @@ col_index = df.columns.get_loc('OBS_STATUS')
 df_filtered = df.iloc[:, :col_index]
 
 # Salva il dataframe filtrato
-df_filtered.to_csv('dataset_filtrato.csv', index=False, sep=';')
+df_filtered.to_csv('build/outputs.csv.gz', index=False, sep=';', compression='gzip')

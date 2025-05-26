@@ -6,7 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 # Carica il dataset
-df = pd.read_csv("dataset_finale.csv")
+df = pd.read_csv("build/dataset.csv.gz", compression="gzip")
 print("Colonne:", df.columns.tolist())
 
 # Discretizza la variabile target "Osservazione" (Raccolto) in 3 livelli
@@ -91,5 +91,5 @@ nx.draw_networkx_labels(model, pos, font_size=10, font_weight='bold')
 plt.axis('off')
 plt.title("Rete Bayesiana crop")
 plt.tight_layout()
-plt.savefig("rete_bayesiana.png", dpi=300)  # salva il file per sicurezza
+plt.savefig("build/baesyan-network.png", dpi=300)  # salva il file per sicurezza
 plt.show()
