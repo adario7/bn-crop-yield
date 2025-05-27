@@ -1,73 +1,35 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
 
-# Carica i dati
-df_raccolto = pd.read_csv("build/outputs.csv.gz", delimiter=';', compression='gzip')
-df_clima = pd.read_csv("build/inputs.csv.gz", delimiter=';', compression='gzip')
+df_input = pd.read_csv("build/inputs.csv.gz", delimiter=';', compression='gzip')
+df_output = pd.read_csv("build/outputs.csv.gz", delimiter=';', compression='gzip')
 
-# Colonne da rimuovere da df_clima
-col_da_rimuovere = [
-    'Pioggia_10AMB003', 'Pioggia_10AMB008', 'Pioggia_10AMB011', 'Pioggia_10AMB012',
-    'Pioggia_10AMB014', 'Pioggia_10AMB016', 'Pioggia_10AMB017', 'Pioggia_10AMB018P',
-    'Pioggia_10AMB024P', 'Pioggia_10AMB025', 'Pioggia_10AMB026', 'Pioggia_10AMB027'
-]
+df_input.rename(columns={'Province': 'province', 'Year': 'year', 'Temperature_Mean_C': 'mean_temperature', 'Precipitation_Annual_mm': 'precipitation',
+						 'ELEM_NUTR_HETT_KG_ANHY_FOSFOR': 'soil_anhy_fosfor',
+						'ELEM_NUTR_HETT_KG_MCRNT_OX_POTAS': 'soil_mcrnt_ox_potas',
+						'ELEM_NUTR_HETT_KG_NITROGEN': 'soil_nitrogen',
+						'ELEM_NUTR_HETT_KG_ORG_COMP': 'soil_org_comp',
+						 },
+				inplace=True)
+df_output.rename(columns={'territorio': 'province'}, inplace=True)
 
-df_clima = df_clima.drop(columns=[c for c in col_da_rimuovere if c in df_clima.columns])
-
-# Rimuovi colonne con >50% NaN e riempi i NaN rimanenti con forward fill
-df_clima = df_clima.dropna(axis=1, thresh=len(df_clima)*0.5)
-df_clima = df_clima.ffill()
-
-# Discretizza temperatura e precipitazioni
-df_clima['Temp_cat'] = pd.cut(df_clima['Temperature_Mean_C'], bins=3, labels=['bassa', 'media', 'alta'])
-df_clima['Pioggia_cat'] = pd.cut(df_clima['Precipitation_Annual_mm'], bins=4, labels=['molto_bassa', 'bassa', 'media', 'alta'])
-
-# Label Encoding per le colonne categoriche di df_clima
-categorical_cols = ['Province', 'Temp_cat', 'Pioggia_cat']
-label_encoders = {}
-for col in categorical_cols:
-    le = LabelEncoder()
-    df_clima[col] = le.fit_transform(df_clima[col].astype(str))
-    label_encoders[col] = le
-
-# Assicurati che 'Territorio' in df_raccolto sia stringa
-df_raccolto['Territorio'] = df_raccolto['Territorio'].astype(str)
-
-# Estendi l'encoder per Province per includere tutte le province di df_raccolto
-le_province = label_encoders['Province']
-missing_provinces = set(df_raccolto['Territorio'].unique()) - set(le_province.classes_)
-if missing_provinces:
-    le_province.classes_ = np.append(le_province.classes_, list(missing_provinces))
-
-# Trasforma la colonna Territorio in codici numerici compatibili
-df_raccolto['Territorio_encoded'] = le_province.transform(df_raccolto['Territorio'])
-
-# Trova province mancanti in df_clima
-province_clima_set = set(df_clima['Province'].unique())
-province_raccolto_set = set(df_raccolto['Territorio_encoded'].unique())
-province_mancanti = province_raccolto_set - province_clima_set
-
-# Per ogni provincia mancante, crea righe con valori medi per ogni anno presente in df_clima
-for provincia_cod in province_mancanti:
-    for anno in df_clima['Year'].unique():
-        df_media = df_clima[df_clima['Year'] == anno].select_dtypes(include=[np.number]).mean()
-        nuova_riga = df_media.to_dict()
-        nuova_riga['Province'] = provincia_cod
-        nuova_riga['Year'] = anno
-        # Per colonne categoriche, usa valore medio o -1 se non numeriche (già numeriche perché encoded)
-        df_clima = pd.concat([df_clima, pd.DataFrame([nuova_riga])], ignore_index=True)
-
-# Fai il merge usando colonne encoded e anno (TIME_PERIOD)
-df_finale = pd.merge(
-    df_raccolto, df_clima,
-    how='left',
-    left_on=['Territorio_encoded', 'TIME_PERIOD'],
-    right_on=['Province', 'Year']
+df = pd.merge(
+    df_output, df_input,
+    how='inner',
+	on=['province', 'year']
 )
 
-# Riempie i NaN numerici con la media (se ce ne sono dopo il merge)
-df_finale.fillna(df_finale.mean(numeric_only=True), inplace=True)
+print(f"Merged dataset shape: {df.shape}")
+print("\nMissing values per column after merge:")
+merged_missing = df.isnull().sum()
+merged_total = len(df)
+for col in df.columns:
+    missing_count = merged_missing[col]
+    missing_pct = (missing_count / merged_total) * 100
+    print(f"  {col}: {missing_count:,} missing ({missing_pct:.2f}%)")
 
-# Salva il file finale
-df_finale.to_csv("build/dataset.csv.gz", index=False, compression='gzip')
+print(f"\nRows with at least one missing value: {df.isnull().any(axis=1).sum():,} ({(df.isnull().any(axis=1).sum() / merged_total) * 100:.2f}%)")
+
+# Drop rows with missing values
+df_clean = df.dropna()
+
+df_clean.to_csv("build/dataset.csv.gz", index=False, compression='gzip')
