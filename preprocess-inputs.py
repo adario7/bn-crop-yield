@@ -10,7 +10,7 @@ DATA_DIR = 'data'
 BUILD_DIR = 'build'
 OUTPUT_FILE = os.path.join(BUILD_DIR, 'inputs.csv.gz')
 
-FILE_PIOGGIA = os.path.join(DATA_DIR, 'pioggia.csv.gz')
+FILE_URBANI = os.path.join(DATA_DIR, 'dati-urbani.csv.gz')
 FILE_PRECIPITAZIONE = os.path.join(DATA_DIR, 'precipitazione-annua.csv.gz')
 FILE_TEMP_MEDIA = os.path.join(DATA_DIR, 'temp-media.csv.gz')
 FILE_TERRENO = os.path.join(DATA_DIR, 'terreno.csv.gz')
@@ -176,12 +176,12 @@ def interpolate_and_reindex_df(df, id_cols, value_cols, global_min_year, global_
 	return processed_df, interpolation_stats_agg
 
 # --- Data Processing Functions ---
-def process_pioggia(province_map, global_min_year, global_max_year, interpolation_stats_agg):
+def process_urbani(province_map, global_min_year, global_max_year, interpolation_stats_agg):
 	print("Processing pioggia data...")
 	try:
-		df = pd.read_csv(FILE_PIOGGIA, sep=';', compression='gzip', encoding='utf-8', low_memory=False)
+		df = pd.read_csv(FILE_URBANI, sep=';', compression='gzip', encoding='utf-8', low_memory=False)
 	except Exception:
-		df = pd.read_csv(FILE_PIOGGIA, sep=';', compression='gzip', encoding='latin1', low_memory=False)
+		df = pd.read_csv(FILE_URBANI, sep=';', compression='gzip', encoding='latin1', low_memory=False)
 
 	df = df[['Territorio', 'DATA_TYPE', 'TIME_PERIOD', 'Osservazione']].copy()
 	df.rename(columns={'TIME_PERIOD': 'Year', 'Osservazione': 'Value', 'DATA_TYPE': 'Indicator_Code', 'Territorio': 'Province'}, inplace=True)
@@ -197,11 +197,14 @@ def process_pioggia(province_map, global_min_year, global_max_year, interpolatio
 		df_agg = df.groupby(['Province', 'Year', 'Indicator_Code'])['Value'].mean().reset_index()
 		pioggia_pivot = df_agg.pivot_table(index=['Province', 'Year'], columns='Indicator_Code', values='Value').reset_index()
 
+	pioggia_pivot = pioggia_pivot[['Province', 'Year', '10AMB025', '10AMB026', '10AMB027']]
+	pioggia_pivot.rename(columns={'10AMB025': 'heat_days', '10AMB026': 'heavy_rain_days', '10AMB027': 'dry_days'}, inplace=True)
+
 	id_cols = ['Province', 'Year']
 	value_cols = [col for col in pioggia_pivot.columns if col not in id_cols]
 	
 	pioggia_final, interpolation_stats_agg = interpolate_and_reindex_df(
-		pioggia_pivot, id_cols, value_cols, global_min_year, global_max_year, interpolation_stats_agg, "Pioggia_"
+		pioggia_pivot, id_cols, value_cols, global_min_year, global_max_year, interpolation_stats_agg,
 	)
 	print(f"Pioggia data processed: {pioggia_final.shape}")
 	return pioggia_final, interpolation_stats_agg
@@ -300,7 +303,7 @@ def process_terreno(province_region_map, global_min_year, global_max_year, inter
 	terreno_mapped_subset = terreno_mapped[id_cols + value_cols]
 
 	terreno_final, interpolation_stats_agg = interpolate_and_reindex_df(
-		terreno_mapped_subset, id_cols, value_cols, global_min_year, global_max_year, interpolation_stats_agg, "Terreno_"
+		terreno_mapped_subset, id_cols, value_cols, global_min_year, global_max_year, interpolation_stats_agg
 	)
 	print(f"Terreno data processed: {terreno_final.shape}")
 	return terreno_final, interpolation_stats_agg
@@ -313,7 +316,7 @@ def main():
 	all_years_collected = set()
 	all_years_collected.update(get_years_from_wide_format(FILE_PRECIPITAZIONE))
 	all_years_collected.update(get_years_from_wide_format(FILE_TEMP_MEDIA))
-	all_years_collected.update(get_years_from_long_format(FILE_PIOGGIA, 'TIME_PERIOD'))
+	all_years_collected.update(get_years_from_long_format(FILE_URBANI, 'TIME_PERIOD'))
 	all_years_collected.update(get_years_from_long_format(FILE_TERRENO, 'TIME_PERIOD'))
 
 	if not all_years_collected:
@@ -331,7 +334,7 @@ def main():
 	df_temp_media, interpolation_stats_agg = process_temp_media(province_region_map, global_min_year, global_max_year, interpolation_stats_agg)
 	df_precipitazione, interpolation_stats_agg = process_precipitazione(province_region_map, global_min_year, global_max_year, interpolation_stats_agg)
 	df_terreno, interpolation_stats_agg = process_terreno(province_region_map, global_min_year, global_max_year, interpolation_stats_agg)
-	df_pioggia, interpolation_stats_agg = process_pioggia(province_region_map, global_min_year, global_max_year, interpolation_stats_agg)
+	df_pioggia, interpolation_stats_agg = process_urbani(province_region_map, global_min_year, global_max_year, interpolation_stats_agg)
 	
 	print("Merging datasets...")
 	# Start with a base of all provinces and all years to ensure full coverage

@@ -11,3 +11,19 @@ Non sono riuscito a trovare nulla sul ph del terreno, almeno nella banca dati de
 
 temperatura e precipitazioni
 https://www.istat.it/tavole-di-dati/temperatura-e-precipitazione-nei-comuni-capoluogo-di-provincia-anno-2022-serie-storica-2006-2022/
+
+
+
+chiavi:
+10AMB003 -> Dispersione da rete idrica comunale
+10AMB008 -> Disponibilità di verde urbano
+10AMB011 -> Popolazione esposta al rischio di frane
+10AMB012 -> Popolazione esposta al rischio di alluvioni
+10AMB014 -> Aree protette
+10AMB016 -> Energia elettrica da fonti rinnovabili
+10AMB017 -> Raccolta differenziata dei rifiuti urbani
+10AMB024P -> Rifiuti urbani prodotti
+10AMB025 -> Indice di durata dei periodi di caldo
+10AMB026 -> Giorni con precipitazione estremamente intensa
+10AMB027 -> Giorni consecutivi senza pioggia
+10AMB018P -> Impermeabilizzazione del suolo da copertura artificiale
