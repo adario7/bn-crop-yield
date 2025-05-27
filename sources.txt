@@ -14,7 +14,7 @@ https://www.istat.it/tavole-di-dati/temperatura-e-precipitazione-nei-comuni-capo
 
 
 
-chiavi:
+mappings:
 10AMB003 -> Dispersione da rete idrica comunale
 10AMB008 -> Disponibilità di verde urbano
 10AMB011 -> Popolazione esposta al rischio di frane
@@ -27,3 +27,270 @@ chiavi:
 10AMB026 -> Giorni con precipitazione estremamente intensa
 10AMB027 -> Giorni consecutivi senza pioggia
 10AMB018P -> Impermeabilizzazione del suolo da copertura artificiale
+
+
+DATA_TYPE -> Indicatore Mappings:
+==================================================
+ART -> Superficie totale - ettari
+ART_ARE -> Superficie totale - are
+FODUNIT_EXT -> Unità foraggere
+HP_Q_EXT -> Produzione raccolta - quintali
+PA_EXT -> Superficie in produzione - ettari
+TP_HECT_EXT -> Produzione totale - ettolitri
+TP_QUIN_EXT -> Produzione totale - quintali
+TP_THOQUIN_EXT -> Produzione totale - migliaia di quintali
+
+
+TYPE_OF_CROP -> Tipo di coltivazione Mappings:
+=======================================================
+AACAE -> Arance navel
+ALMO -> Mandorla
+APPLE -> Mela
+APRIC -> Albicocca
+ASPAINGRE -> Asparago in serra
+ASPAINGREOPEN -> Asparago in piena aria
+BARLEY -> Orzo
+BEANK -> Fagiolo secco
+BEANREENHOU -> Fagiolino in serra
+BEETANDLEA -> Barbabietola da orto in piena aria
+BEETREENHOU -> Bietola da costa in serra
+BEETS -> Barbabietola da zucchero
+BERG -> Bergamotto
+BLACKCURRA -> Ribes nero
+BROAFIELD -> Fava da granella
+BROCINOPEN -> Broccoletto di rapa in piena aria
+BRUSSPROUTS -> Cavolo di bruxelles
+BUBRY -> Mirtillo
+CABBNOPEN -> Cavolo cappuccio in piena aria
+CARO -> Carrubo
+CARRGREENH -> Carota in serra
+CARRNDPARS -> Carota e pastinaca in piena aria
+CAULERAND -> Cavolfiore  (e cavolo broccolo)
+CDLMS -> Lime acidi
+CEDA -> Cedro
+CELEGREENH -> Sedano in serra
+CELEOPENF -> Sedano in piena aria
+CEREAOG -> Altri cereali
+CERFORRLEY -> Orzo a maturazione cerosa
+CEROIS -> Mais ceroso
+CERORLEY -> Orzo ceroso
+CHAROPENFI -> Bietola da costa in piena aria
+CHERR -> Ciliegia in complesso
+CHEST -> Castagne e marroni
+CHICNOPEN -> Radicchio o cicoria in piena aria
+CHICS -> Cece
+CHIN -> Chinotto
+CHMAPIGN -> Champignons
+CICRADIFRE -> Cicoria o radicchio per consumo fresco
+CICRADIFRE_GREEN -> Cicoria o radicchio per consumo fresco in serra
+CICRADIFRE_OPEN -> Cicoria o radicchio per consumo fresco in piena aria
+CICRADITRA -> Cicoria o radicchio destinate alla trasformazione
+CICRADITRA_GREEN -> Cicoria o radicchio destinate alla trasformazione in serra
+CICRADITRA_OPEN -> Cicoria o radicchio destinate alla trasformazione in piena aria
+CITRFR -> Agrumi
+CLEMENTINE -> Clementine
+COMMEAT -> Frumento tenero
+COMMEGRASS -> Loietto
+COTTON -> Cotone
+COURINGRE -> Zucchina in serra
+COURINOPE -> Zucchina in piena aria
+CRAT -> Ribes
+CROPOT -> Altre piante tessili
+CUCUINGRE -> Cetriolo da mensa in serra
+CUCUINOPE -> Cetriolo da mensa in piena aria
+CULTDMUSHR -> Funghi di coltivazione in piena aria
+DRIESES -> Leguminose
+EARLATOES -> Patata primaticcia
+ECENEDEDF -> Pesche destinate a consumo
+ECENEDEDFTR -> Pesche destinate alla trasformazione
+EGGINGRE -> Melanzana in serra
+EGGINOPE -> Melanzana in piena aria
+ENDIGREENH -> Indivia in serra
+ENDINOPEN -> Indivia (riccia e scarola) in piena aria
+ERETNDFOR -> Pere destinate alla trasformazione
+ERORSHCO -> Pere per il consumo fresco
+ETRNSITENDE -> Nettarine destinate a consumo
+ETRNSITENDETR -> Nettarine destinate alla trasformazione
+FENNGREENH -> Finocchio in serra
+FENNOPENF -> Finocchio in piena aria
+FIG -> Fico
+FLAX -> Lino
+FORARLEY -> Orzo in erba
+FRESADBEAN -> Fava fresca in piena aria
+FRESNEYBEA -> Fagiolo e fagiolino in piena aria
+FRSTCZ -> Altra frutta fresca di origine sub-tropicale
+GAEOASINS -> Uva per uva passa (uvetta)
+GARLDSHALL -> Aglio e scalogno in piena aria
+GARLIC -> Aglio
+GHERIN -> Cetriolo da sottaceti
+GHERINOPEN -> Cetriolo da sottaceti in piena aria
+GLOBICHOKE -> Carciofo in piena aria
+GOOSEBERRI -> Uva spina
+GRAM -> Graminacee
+GRAPEDOPWINE -> Uve per vini dop
+GRAPEIGPWINE -> Uve per vini igp
+GROU -> Arachide
+HAZEL -> Nocciola
+HEMP -> Canapa
+HOPS -> Luppolo
+HTABG -> Cavolo bianco
+ITRSOYEAN -> Miscele di segale e cereali invernali
+JAPAMEDLAR -> Nespolo del giappone
+KIWI -> Kiwi
+LEEKOPENFI -> Porro in piena aria
+LEGMIX -> Miscele di leguminose
+LEMLIME -> Limoni e lime acidi
+LEMON -> Limone
+LENTIL -> Lenticchia
+LETTNGREEN -> Lattuga in serra
+LETTNOPEN -> Lattuga in piena aria
+LNSOITERC -> Miscele di cereali invernali
+LOTU -> Loti o kaki
+LUCERNE -> Erba medica
+LUPIN -> Lupino dolce
+LVRADBENDS -> Trifoglio e miscele
+MAIZE -> Mais
+MANDAR -> Mandarino
+MEDLAR -> Nespola
+MELOGREENHO -> Popone o melone in serra
+MELOOPENFI -> Popone o melone in piena aria
+MIXEPORARY -> Prati avvicendati polifiti
+MUST -> Mosto
+MXSOASANDS -> Miscele di avena e cereali primaverili (grano misto diverso dal maslin)
+NECTA -> Nettarina (pesca noce)
+OATS -> Avena
+OFTP -> Pomodoro da trasformazione in piena aria
+OFTTOT -> Pomodoro da consumo fresco o da mensa
+OHRIBRID -> Altri ibridi
+OHROAGS -> Altre arance
+OHROIE -> Altre olive
+OHROIEOIL -> Altre olive da olio
+OLIVO -> Olive da olio
+OLIVT -> Olive da tavola
+OLIVTAB_OIL -> Olive da tavola e da olio
+ONIOOPENF -> Cipolla in piena aria
+ORANGE -> Arancia
+ORCERE -> Amarene
+OTHAGRBCC -> Altri agrumi diversi da bergamotto cedro e chinotto
+OTHALEAFSNOB -> Altre verdure a foglia o a stelo diverse dalla bietola da costa
+OTHAPOHPS -> Altre piante aromatiche, medicinali e culinarie
+OTHBROCI -> Altri cavoli diversi dai broccoletti di rapa
+OTHCULTMUNOCHA -> Altri funghi coltivati diversi dagli champignons
+OTHEEHERBA -> Altri erbai monofiti
+OTHEETABLESGR -> Altri ortaggi in serra
+OTHEETEMPO -> Altre specie di foraggere temporaneee
+OTHESSICAS -> Altri cavoli in piena aria
+OTHETFRUIT -> Altre bacche
+OTHETFRUITNOR -> Altre bacche diverse da sorbo
+OTHETURES -> Altri miscugli
+OTHEZINGS -> Altri pascoli
+OTHFRELPULS -> Altri legumi freschi
+OTHFRELPULSNF -> Altri legumi freschi diversi dalla fava
+OTHGRENOCER -> Altre piante raccolte verdi da seminativi
+OTHGRPURP -> Uva per altri scopi
+OTHGRWINODI -> Uve per altri vini (escluso dop e igp)
+OTHNUTSFRUNOJ -> Altri frutti a nocciuolo diversi dalla nespola del giappone
+OTHNUTSOPI -> Altra frutta a guscio diversa dal pistacchio
+OTHOLNOSES -> Altre colture di semi oleosi diversi dal sesamo
+OTHPOMAFRUNOQM -> Altri frutti pomacei diversi da nespola comune e cotogna
+OTHROOTSBULBSTUBPOT -> Altre coltivazioni di radici diverse dalla patata dolce
+OTMFC -> Altri erbai monofiti di cereali
+PARSNGREEN -> Prezzemolo in serra
+PARSNGROPEN -> Prezzemolo in piena aria
+PEACH -> Pesca
+PEAEENHOUS -> Pisello in serra
+PEAENFIEL -> Pisello in piena aria
+PEAPROT -> Pisello proteico
+PEAR -> Pera
+PEAS -> Pisello da granella
+PERMGRASSE -> Prati permanenti
+PGPNP -> Prati permanenti e pascoli non più destinati alla produzione, ammessi a beneficiare di aiuti finanziari
+PGRAPM -> Foraggere permanenti - prati permanenti e pascoli
+PIGBRE -> Orzo primaverile
+PIGWETSPRING -> Grano primaverile e farro
+PIGWETWINT -> Grano invernale e farro
+PISTS -> Pistacchi
+PLSDSIEDFO -> Mele destinate alla trasformazione
+PLSFRFESHC -> Mele per il consumo fresco
+PLUM -> Susina
+POME -> Pompelmo
+POMETES -> Melograno
+POORINGS -> Pascoli poveri
+POTA -> Patata comune
+PRESIL -> Olio di oliva
+PRICKLYPEAR -> 'Fichi d"'india'
+QUIN -> Cotogno
+RADIINGRE -> Cicoria o radicchio in serra
+RADIINGREE -> Ravanello in serra
+RADIOPEN -> Ravanello in piena aria
+RAPE -> Colza
+RDCBAE -> Cavolo rosso
+RDOAGS -> Arance rosse
+REDCURRA -> Ribes rosso
+REDINGREE -> Barbabietola da orto in serra
+REDOSEWIN -> Vino rosso e rosato da tavola
+REDRINGR -> Peperone in serra
+REDRINOP -> Peperone in piena aria
+REGDESBLACKWINE -> Vino D:O:P: rosso e rosato
+REGDESWHITEWINE -> Vino D:O:P: bianco
+REGDESWINE -> Vino D:O:P:
+RICE -> Riso
+ROUSPBERRI -> Lampone
+ROWAN -> Sorbo
+RYE -> Segale
+SAIN -> Lupinella
+SAVOBAGEIN -> Cavolo verza
+SESA -> Sesamo
+SHALLOT -> Scalogno in piena aria
+SORGH -> Sorgo
+SOYA -> Soia
+SPANPARCET -> Sulla
+SPINNGREEN -> Spinacio in serra
+SPINNOPEN -> Spinacio in piena aria
+SRNRIIXES -> Miscele di cereali primaverili (grano misto diverso dal maslin)
+STRAIEING -> Fragola in serra
+STRAIEINO -> Fragola in piena aria
+STUAMNARIN -> Satsumas (mandarancio del giappone)
+SUNFLO -> Girasole
+SWCHERRIES -> Ciliegie dolci
+SWEEATOES -> Batata o patata dolce
+SWEEILING -> Basilico
+TABLEGRAPES -> Uva da tavola
+TABLW -> Vino da tavola
+TITICALE -> Triticale
+TOBAC -> Tabacco
+TOMAGRENNH -> Pomodoro in serra
+TOMAGRENNH_I -> Pomodoro da consumo fresco in serra
+TOMAGRENNH_II -> Pomodoro da trasformazione in serra
+TOMATIOPFI -> Pomodoro in piena aria
+TURNNOPEN -> Rapa in piena aria
+TURNPE -> Ravizzone
+TYPGEOBLACKWINE -> Vino I.G.P. rosso e rosato
+TYPGEOWHITEWINE -> Vino I.G.P. bianco
+TYPGEOWINE -> Vino I.G.P.
+VALEINGREE -> Valeriana
+WALNU -> Noci
+WATENINGR -> Cocomero in serra
+WATENINOP -> Cocomero in piena aria
+WHEATD -> Frumento duro
+WHITNE -> Vino bianco da tavola
+WIEOAGSBLAN -> Arance bianche (blancas)
+WINE -> Vino
+WINECALGEO -> Vino I.G.T.
+WINEES -> Uva da vino
+WINEMUST -> Vino e mosto
+WINESTERED -> Vino D.O.C. e D.O.C.G.
+WNEALY -> Orzo invernale
+
+Summary:
+- Found 8 unique DATA_TYPE mappings
+- Found 238 unique TYPE_OF_CROP mappings
+
+Data Structure Analysis:
+==============================
+Total rows: 715665
+Total columns: 23
+Date range: 2006 - 2025
+Unique territories: 140
+Unique indicators: 8
+Unique crop types: 238
