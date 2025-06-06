@@ -10,10 +10,10 @@ from pgmpy.estimators import MaximumLikelihoodEstimator, HillClimbSearch, Expert
 from pgmpy.inference import VariableElimination
 
 # Configuration
-N_QUANTILES = 4
-MAX_INDEGREE = 4
-ONE_CROP = "COMMEAT"
-RATIO = 'tot_surface' # 'productive_surface' # None
+N_QUANTILES = 3
+MAX_INDEGREE = 6
+ONE_CROP = "PEAR" # True # "WINEES"
+RATIO = 'productive_surface' # 'tot_surface' # None
 
 DATASET_PATH = 'build/dataset.csv.gz'
 OUTPUT_DIR = 'build/'
@@ -27,7 +27,7 @@ DEPENDENT_VAR_NAME = 'yield_ratio'
 
 FORBIDDEN_EDGES = [ (a, b) for a in VAR_TEMP for b in VAR_SOIL ] + [ (b, a) for a in VAR_TEMP for b in VAR_SOIL ] + [ (a, b) for a in VAR_SOIL for b in VAR_SOIL if a != b ] + [ (DEPENDENT_VAR_NAME, a) for a in INDEPENDENT_VARS ]
 
-INFERENCE_CONDITION = VAR_TEMP
+INFERENCE_CONDITION = [] # VAR_SOIL
 
 def ensure_output_dir():
 	"""Ensures the output directory exists."""
@@ -52,12 +52,14 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 
 	# Find the crop with the most rows
 	print(df['crop'].value_counts().head(10))
-	if ONE_CROP is str:
+	if isinstance(ONE_CROP, str):
 		most_frequent_crop = ONE_CROP
-	else:
+	elif ONE_CROP is True:
 		most_frequent_crop = df['crop'].mode()[0]
+	else:
+		most_frequent_crop = None
 	print(f"Most frequent crop: '{most_frequent_crop}'")
-	if ONE_CROP is True or ONE_CROP is str:
+	if most_frequent_crop is not None:
 		df_crop = df[df['crop'] == most_frequent_crop].copy()
 	else:
 		df_crop = df
@@ -402,7 +404,7 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		
 		plt.colorbar(label=f"P({dependent_var} state | {var_to_change} state)")
 		
-		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n(Others at median)", fontsize=14)
+		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n({INFERENCE_CONDITION} at median)", fontsize=14)
 		
 		plt.xlabel(f"State of '{var_to_change}'", fontsize=12)
 		plt.xticks(ticks=np.arange(num_var_to_change_states), labels=var_actual_states, rotation=45, ha="right")

@@ -55,11 +55,12 @@ def load_and_preprocess_data(filepath):
 	print(df['crop'].value_counts().head(10))
 	if isinstance(ONE_CROP, str):
 		most_frequent_crop = ONE_CROP
-	else:
+	elif ONE_CROP is True:
 		most_frequent_crop = df['crop'].mode()[0]
+	else:
+		most_frequent_crop = None
 	print(f"Most frequent crop: '{most_frequent_crop}'")
-	
-	if ONE_CROP is True or isinstance(ONE_CROP, str):
+	if most_frequent_crop is not None:
 		df_crop = df[df['crop'] == most_frequent_crop].copy()
 	else:
 		df_crop = df
