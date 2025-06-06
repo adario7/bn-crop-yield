@@ -29,80 +29,69 @@ def process_crops_data(input_file='data/crops.csv.gz', output_file='build/output
 		df_filtered['Territorio'] = df_filtered['Territorio'].str.replace("'L\"'Aquila'", "L'Aquila")
 		df_filtered['Territorio'] = df_filtered['Territorio'].str.replace("'Reggio nell\"'Emilia'", 'Reggio nell\'Emilia')
 		
-		# Create the base structure
-		result_data = []
+		# Remove rows with NaN values in OBS_VALUE since they won't contribute to the final result
+		df_filtered = df_filtered.dropna(subset=['OBS_VALUE'])
 		
-		# Group by year, territory, and crop
-		groups = df_filtered.groupby(['TIME_PERIOD', 'Territorio', 'TYPE_OF_CROP'])
+		print("Processing data using vectorized operations...")
 		
-		print(f"Processing {len(groups)} unique combinations...", end="")
+		# Create pivot table to reshape data - each DATA_TYPE becomes a column
+		pivot_df = df_filtered.pivot_table(
+			index=['TIME_PERIOD', 'Territorio', 'TYPE_OF_CROP'],
+			columns='DATA_TYPE',
+			values='OBS_VALUE',
+			aggfunc='first'  # In case of duplicates, take first value
+		).reset_index()
 		
-		processed_count = 0
+		# Rename columns for clarity
+		pivot_df.columns.name = None  # Remove the 'DATA_TYPE' name from columns
+		pivot_df = pivot_df.rename(columns={
+			'TIME_PERIOD': 'year',
+			'Territorio': 'territorio', 
+			'TYPE_OF_CROP': 'crop'
+		})
 		
-		for (year, territorio, crop_code), group in groups:
-			processed_count += 1
-			
-			# Show progress every 10,000 combinations
-			if processed_count % 10000 == 0:
-				print(".", end="", flush=True)
-			
-			# Initialize row
-			row = {
-				'year': year,
-				'territorio': territorio,
-				'crop': crop_code,  # Use TYPE_OF_CROP code instead of description
-				'tot_surface': np.nan,
-				'productive_surface': np.nan,
-				'yield': np.nan,
-				'yield_unit': None
-			}
-			
-			# Extract values by indicator type
-			indicators = {}
-			for _, record in group.iterrows():
-				data_type = record['DATA_TYPE']
-				value = record['OBS_VALUE']
-				if not pd.isna(value):
-					indicators[data_type] = value
-			
-			# Calculate total surface (prefer ART, convert ART_ARE if needed)
-			if 'ART' in indicators:
-				row['tot_surface'] = indicators['ART']
-			elif 'ART_ARE' in indicators:
-				# Convert are to hectares (1 hectare = 100 are)
-				row['tot_surface'] = indicators['ART_ARE'] / 100
-			
-			# Productive surface
-			if 'PA_EXT' in indicators:
-				row['productive_surface'] = indicators['PA_EXT']
-			
-			# Yield - prefer consistency within same crop
-			# First check what yield types are available for this crop across all years
-			if 'TP_HECT_EXT' in indicators:
-				row['yield'] = indicators['TP_HECT_EXT']
-				row['yield_unit'] = 'hectoliters'
-			elif 'TP_QUIN_EXT' in indicators:
-				row['yield'] = indicators['TP_QUIN_EXT']
-				row['yield_unit'] = 'quintals'
-			elif 'TP_THOQUIN_EXT' in indicators:
-				# Convert thousands of quintals to quintals
-				row['yield'] = indicators['TP_THOQUIN_EXT'] * 1000
-				row['yield_unit'] = 'quintals'
-			
-			# Only add rows that have at least some data
-			if not all(pd.isna([row['tot_surface'], row['productive_surface'], row['yield']])):
-				result_data.append(row)
+		print(f"Created pivot table with {len(pivot_df)} records")
 		
-		# Create final dataframe
-		result_df = pd.DataFrame(result_data)
+		# Calculate total surface (prefer ART, convert ART_ARE if needed)
+		# Use vectorized operations with np.where for conditional logic
+		pivot_df['tot_surface'] = np.where(
+			pivot_df.get('ART', pd.Series()).notna(),
+			pivot_df.get('ART', 0),
+			np.where(
+				pivot_df.get('ART_ARE', pd.Series()).notna(),
+				pivot_df.get('ART_ARE', 0) / 100,  # Convert are to hectares
+				np.nan
+			)
+		)
 		
-		print()
-		print(f"Created {len(result_df)} processed records")
+		# Productive surface - direct assignment
+		pivot_df['productive_surface'] = pivot_df.get('PA_EXT', np.nan)
 		
-		# Sort by year, territory, crop for better readability
+		# Yield calculation with priority: TP_HECT_EXT > TP_QUIN_EXT > TP_THOQUIN_EXT
+		# Create yield column with cascading priorities
+		pivot_df['yield'] = np.select([
+			pivot_df.get('TP_HECT_EXT', pd.Series()).notna(),
+			pivot_df.get('TP_QUIN_EXT', pd.Series()).notna(),
+			pivot_df.get('TP_THOQUIN_EXT', pd.Series()).notna()
+		], [
+			pivot_df.get('TP_HECT_EXT', 0),
+			pivot_df.get('TP_QUIN_EXT', 0), 
+			pivot_df.get('TP_THOQUIN_EXT', 0) * 1000  # Convert thousands of quintals to quintals
+		], default=np.nan)
+		
+		# Filter out rows that have no useful data (all three main columns are NaN)
+		mask = (pivot_df['tot_surface'].notna() | 
+				pivot_df['productive_surface'].notna() | 
+				pivot_df['yield'].notna())
+		
+		result_df = pivot_df[mask].copy()
+		
+		print(f"Filtered to {len(result_df)} records with at least some data")
+		
+		# Sort by year, territory, crop for better readability  
 		result_df = result_df.sort_values(['year', 'territorio', 'crop']).reset_index(drop=True)
 		
-		# Create final output (no yield_unit column)
+		# Create final output with only the required columns
 		final_df = result_df[['year', 'territorio', 'crop', 'tot_surface', 'productive_surface', 'yield']].copy()
 		
 		# Create build directory if it doesn't exist
@@ -112,7 +101,7 @@ def process_crops_data(input_file='data/crops.csv.gz', output_file='build/output
 		final_df.to_csv(output_file, index=False, compression='gzip', sep=';')
 		print(f"Saved processed data to: {output_file}")
 		
-		print(f"Final processing complete: {processed_count:,} combinations processed")
+		print(f"Final processing complete: {len(final_df):,} records processed")
 		
 		# Show detailed statistics
 		print_detailed_stats(final_df, result_df)
@@ -199,37 +188,9 @@ def print_detailed_stats(final_df, result_df):
 	for crop, count in top_crops.items():
 		print(f"  {crop}: {count:,} records")
 
-def analyze_yield_consistency():
-	"""
-	Analyze yield unit consistency across crops to ensure we're not mixing units
-	"""
-	print("\nAnalyzing yield unit consistency by crop...")
-	
-	try:
-		df = pd.read_csv('data/crops.csv.gz', sep=';', compression='gzip', 
-						usecols=range(23), engine='c')
-		
-		# Filter for yield indicators
-		yield_types = ['TP_HECT_EXT', 'TP_QUIN_EXT', 'TP_THOQUIN_EXT']
-		yield_df = df[df['DATA_TYPE'].isin(yield_types)]
-		
-		# Group by crop and see what yield types each crop uses
-		crop_yield_types = yield_df.groupby('TYPE_OF_CROP')['DATA_TYPE'].unique()
-		
-		print("Sample yield consistency check (first 10 crops):")
-		for i, (crop_code, yield_types_used) in enumerate(crop_yield_types.head(10).items()):
-			yield_types_list = list(yield_types_used)
-			print(f"  {crop_code}: {yield_types_list}")
-			
-	except Exception as e:
-		print(f"Error in yield consistency analysis: {e}")
-
 if __name__ == "__main__":
 	# Process the data
 	processed_df = process_crops_data()
-	
-	# Analyze yield consistency
-	#analyze_yield_consistency()
 	
 	if processed_df is not None:
 		print(f"\nProcessing completed successfully!")
