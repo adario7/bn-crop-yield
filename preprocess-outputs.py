@@ -94,14 +94,22 @@ def process_crops_data(input_file='data/crops.csv.gz', output_file='build/output
 		# Create final output with only the required columns
 		final_df = result_df[['year', 'territorio', 'crop', 'tot_surface', 'productive_surface', 'yield']].copy()
 		
+		# Apply interpolation to fill missing data points
+		print("Applying linear interpolation to fill missing data points...")
+		final_df, interpolation_stats = interpolate_missing_data(final_df)
+		
 		# Create build directory if it doesn't exist
 		os.makedirs('build', exist_ok=True)
 		
-		# Save to compressed CSV with semicolon separator
-		final_df.to_csv(output_file, index=False, compression='gzip', sep=';')
+		# Save to compressed CSV with semicolon separator, ensuring column order
+		column_order = ['year', 'territorio', 'crop', 'tot_surface', 'productive_surface', 'yield']
+		final_df[column_order].to_csv(output_file, index=False, compression='gzip', sep=';')
 		print(f"Saved processed data to: {output_file}")
 		
 		print(f"Final processing complete: {len(final_df):,} records processed")
+		
+		# Show interpolation report
+		print_interpolation_report(interpolation_stats)
 		
 		# Show detailed statistics
 		print_detailed_stats(final_df, result_df)
@@ -115,6 +123,121 @@ def process_crops_data(input_file='data/crops.csv.gz', output_file='build/output
 	except Exception as e:
 		print(f"Error processing data: {e}")
 		return None
+
+def interpolate_missing_data(df):
+	"""
+	For each (territorio, crop) pair, interpolate missing values across years using linear interpolation.
+	Returns the dataframe with interpolated values and statistics about interpolation.
+	Optimized version using pandas groupby operations instead of loops.
+	"""
+	
+	# Create a copy to avoid modifying the original
+	df_interp = df.copy()
+	
+	# Track interpolation statistics
+	interpolation_stats = {
+		'tot_surface': {'original_missing': 0, 'interpolated': 0, 'total_values': 0},
+		'productive_surface': {'original_missing': 0, 'interpolated': 0, 'total_values': 0},
+		'yield': {'original_missing': 0, 'interpolated': 0, 'total_values': 0}
+	}
+	
+	# Count original missing values
+	data_columns = ['tot_surface', 'productive_surface', 'yield']
+	for col in data_columns:
+		interpolation_stats[col]['original_missing'] = df_interp[col].isna().sum()
+		interpolation_stats[col]['total_values'] = len(df_interp)
+	
+	print(f"Processing interpolation using vectorized operations...")
+	
+	# Create a complete year range for each (territorio, crop) combination
+	# First, get the min and max year for each group
+	group_year_ranges = df_interp.groupby(['territorio', 'crop'])['year'].agg(['min', 'max']).reset_index()
+	
+	# Create complete year ranges for all groups
+	complete_combinations = []
+	for _, row in group_year_ranges.iterrows():
+		years = list(range(row['min'], row['max'] + 1))
+		for year in years:
+			complete_combinations.append({
+				'territorio': row['territorio'],
+				'crop': row['crop'],
+				'year': year
+			})
+	
+	# Convert to DataFrame - this creates the complete time series for all groups
+	complete_df = pd.DataFrame(complete_combinations)
+	
+	# Merge with original data to get the complete dataset with NaN gaps
+	df_complete = complete_df.merge(
+		df_interp, 
+		on=['territorio', 'crop', 'year'], 
+		how='left'
+	)
+	
+	# Sort to ensure proper order for interpolation
+	df_complete = df_complete.sort_values(['territorio', 'crop', 'year']).reset_index(drop=True)
+	
+	# Apply interpolation using groupby with transform
+	# This applies interpolation within each (territorio, crop) group
+	def interpolate_group(group):
+		"""Apply linear interpolation to a group if it has enough non-NaN values"""
+		result = group.copy()
+		for col in data_columns:
+			if result[col].notna().sum() >= 2:  # Need at least 2 points for interpolation
+				result[col] = result[col].interpolate(method='linear')
+		return result
+	
+	# Apply interpolation to each group
+	df_interpolated = df_complete.groupby(['territorio', 'crop'], group_keys=False).apply(interpolate_group)
+	
+	# Reset index to ensure clean DataFrame
+	df_interpolated = df_interpolated.reset_index(drop=True)
+	
+	# Remove rows that are still completely empty (all three columns are NaN)
+	mask = (df_interpolated['tot_surface'].notna() | 
+			df_interpolated['productive_surface'].notna() | 
+			df_interpolated['yield'].notna())
+	
+	df_final = df_interpolated[mask].copy()
+	
+	# Update interpolation statistics based on final dataset
+	for col in data_columns:
+		interpolation_stats[col]['total_values'] = len(df_final)
+		# Calculate interpolated count: final non-NA minus original non-NA
+		final_non_na = df_final[col].notna().sum()
+		original_non_na = df[col].notna().sum()
+		interpolation_stats[col]['interpolated'] = max(0, final_non_na - original_non_na)
+	
+	return df_final, interpolation_stats
+
+def print_interpolation_report(stats):
+	"""Print a detailed report about interpolation statistics"""
+	
+	print(f"\nInterpolation Report:")
+	print("=" * 50)
+	
+	for column, data in stats.items():
+		total = data['total_values']
+		interpolated = data['interpolated']
+		
+		if total > 0:
+			interpolation_pct = (interpolated / total) * 100
+			print(f"\n{column.replace('_', ' ').title()}:")
+			print(f"  Total values in final dataset: {total:,}")
+			print(f"  Values from interpolation: {interpolated:,}")
+			print(f"  Percentage interpolated: {interpolation_pct:.2f}%")
+		else:
+			print(f"\n{column.replace('_', ' ').title()}: No data available")
+	
+	total_all_columns = sum(data['total_values'] for data in stats.values())
+	total_interpolated = sum(data['interpolated'] for data in stats.values())
+	
+	if total_all_columns > 0:
+		overall_pct = (total_interpolated / total_all_columns) * 100
+		print(f"\nOverall Statistics:")
+		print(f"  Total data points across all columns: {total_all_columns:,}")
+		print(f"  Total interpolated values: {total_interpolated:,}")
+		print(f"  Overall interpolation percentage: {overall_pct:.2f}%")
 
 def print_detailed_stats(final_df, result_df):
 	"""Print detailed statistics about the processed data and indicators used"""
@@ -188,9 +311,37 @@ def print_detailed_stats(final_df, result_df):
 	for crop, count in top_crops.items():
 		print(f"  {crop}: {count:,} records")
 
+def analyze_yield_consistency():
+	"""
+	Analyze yield unit consistency across crops to ensure we're not mixing units
+	"""
+	print("\nAnalyzing yield unit consistency by crop...")
+	
+	try:
+		df = pd.read_csv('data/crops.csv.gz', sep=';', compression='gzip', 
+						usecols=range(23), engine='c')
+		
+		# Filter for yield indicators
+		yield_types = ['TP_HECT_EXT', 'TP_QUIN_EXT', 'TP_THOQUIN_EXT']
+		yield_df = df[df['DATA_TYPE'].isin(yield_types)]
+		
+		# Group by crop and see what yield types each crop uses
+		crop_yield_types = yield_df.groupby('TYPE_OF_CROP')['DATA_TYPE'].unique()
+		
+		print("Sample yield consistency check (first 10 crops):")
+		for i, (crop_code, yield_types_used) in enumerate(crop_yield_types.head(10).items()):
+			yield_types_list = list(yield_types_used)
+			print(f"  {crop_code}: {yield_types_list}")
+			
+	except Exception as e:
+		print(f"Error in yield consistency analysis: {e}")
+
 if __name__ == "__main__":
 	# Process the data
 	processed_df = process_crops_data()
+	
+	# Analyze yield consistency
+	#analyze_yield_consistency()
 	
 	if processed_df is not None:
 		print(f"\nProcessing completed successfully!")
