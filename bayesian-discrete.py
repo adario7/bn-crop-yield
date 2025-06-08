@@ -503,6 +503,5 @@ if __name__ == '__main__':
 			print("\n\n\n\n\nCrop N ", i +1, ":\n\n\n\n\n")
 			sel_crop = crop_to_test
 			main_procedure()
-			exit()
 
 	else:   main_procedure()
