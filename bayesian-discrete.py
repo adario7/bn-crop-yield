@@ -4,16 +4,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
 from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.estimators import MaximumLikelihoodEstimator, HillClimbSearch, ExpertKnowledge
 from pgmpy.inference import VariableElimination
 
 # Configuration
-N_QUANTILES = 3
-MAX_INDEGREE = 6
-ONE_CROP = "PEAR" # True # "WINEES"
-RATIO = 'productive_surface' # 'tot_surface' # None
+N_QUANTILES = 4
+MAX_INDEGREE = 4
+TRY_ALL_CROPS = True
+sel_crop = "COMMEAT"  # ignored if TRY_ALL_CROPS = true
+RATIO = 'tot_surface' # 'productive_surface' # None
 
 DATASET_PATH = 'build/dataset.csv.gz'
 OUTPUT_DIR = 'build/'
@@ -27,12 +30,20 @@ DEPENDENT_VAR_NAME = 'yield_ratio'
 
 FORBIDDEN_EDGES = [ (a, b) for a in VAR_TEMP for b in VAR_SOIL ] + [ (b, a) for a in VAR_TEMP for b in VAR_SOIL ] + [ (a, b) for a in VAR_SOIL for b in VAR_SOIL if a != b ] + [ (DEPENDENT_VAR_NAME, a) for a in INDEPENDENT_VARS ]
 
-INFERENCE_CONDITION = [] # VAR_SOIL
+INFERENCE_CONDITION = VAR_TEMP
 
 def ensure_output_dir():
 	"""Ensures the output directory exists."""
 	os.makedirs(OUTPUT_DIR, exist_ok=True)
 	print(f"Output directory '{OUTPUT_DIR}' ensured.")
+
+def get_all_crops_available(filepath):
+	print(f"Getting the available crops from '{filepath}'...")
+	try:
+		with gzip.open(filepath, 'rt') as f: return pd.read_csv(f)['crop'].unique()
+	except FileNotFoundError:
+		print(f"ERROR: Dataset not found at {filepath}. Please ensure it exists.")
+		return []
 
 def load_and_preprocess_data(filepath, num_quantiles_config):
 	"""
@@ -52,14 +63,12 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 
 	# Find the crop with the most rows
 	print(df['crop'].value_counts().head(10))
-	if isinstance(ONE_CROP, str):
-		most_frequent_crop = ONE_CROP
-	elif ONE_CROP is True:
-		most_frequent_crop = df['crop'].mode()[0]
+	if sel_crop is str:
+		most_frequent_crop = sel_crop
 	else:
-		most_frequent_crop = None
+		most_frequent_crop = df['crop'].mode()[0]
 	print(f"Most frequent crop: '{most_frequent_crop}'")
-	if most_frequent_crop is not None:
+	if sel_crop is True or sel_crop is str:
 		df_crop = df[df['crop'] == most_frequent_crop].copy()
 	else:
 		df_crop = df
@@ -404,7 +413,7 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		
 		plt.colorbar(label=f"P({dependent_var} state | {var_to_change} state)")
 		
-		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n({INFERENCE_CONDITION} at median)", fontsize=14)
+		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n(Others at median)", fontsize=14)
 		
 		plt.xlabel(f"State of '{var_to_change}'", fontsize=12)
 		plt.xticks(ticks=np.arange(num_var_to_change_states), labels=var_actual_states, rotation=45, ha="right")
@@ -423,19 +432,20 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		plt.close()
 
 
-def main():
+def main_procedure():
 	"""
-	Main function to run the causal inference pipeline.
+	Main function to run the causal inference pipeline
 	"""
-	print("Starting Causal Inference and Bayesian Network Analysis for Agriculture")
-	ensure_output_dir()
-
 	# Pass N_QUANTILES (the configuration for target quantiles) to preprocessing
 	discretized_df, ind_vars, dep_var, original_continuous_data = load_and_preprocess_data(DATASET_PATH, N_QUANTILES)
-
 	if discretized_df is None or discretized_df.empty:
 		print("Halting execution due to data loading/preprocessing errors.")
 		return
+	
+	test_data = None
+	if TRY_ALL_CROPS: 
+		discretized_df, test_data   = train_test_split(discretized_df,           test_size=0.2, random_state=42)
+		original_continuous_data, _ = train_test_split(original_continuous_data, test_size=0.2, random_state=42)
 
 	# Causal Discovery
 	causal_model_structure_dag = discover_causal_structure_pc(discretized_df, ind_vars, dep_var)
@@ -451,12 +461,48 @@ def main():
 		print("Halting execution due to Bayesian Network training errors.")
 		return
 
-	# Save network plot
-	save_network_plot(bn_model, NETWORK_PLOT_PATH)
+	if TRY_ALL_CROPS: 
+		print("Evaluating the accuracy score")
+		with open("accuracy_by_inputs.csv", "a") as file:
+			infer = VariableElimination(bn_model)
+			line_to_write = sel_crop
 
-	# Plot variable effects
-	# Pass N_QUANTILES (config) for y-axis scaling and median calculation reference
-	plot_variable_effects(bn_model, discretized_df, ind_vars, dep_var, N_QUANTILES, OUTPUT_DIR, original_continuous_data)
+			for x  in INDEPENDENT_VARS:
+				y_true = []
+				y_pred = []
+				
+				file.write(line_to_write + ";")
+
+				for _, row in test_data.iterrows(): 
+					evidence = row.drop(x).to_dict()
+					true_value = int(row[x][1]) #conversion str quantil "qN" -> int N
+					pred_dist = infer.query([x], evidence=evidence, show_progress=False)
+					pred = pred_dist.values.argmax()
+					y_true.append(true_value)
+					y_pred.append(pred)
+
+				line_to_write = str(accuracy_score(y_true, y_pred))
+
+			file.write(line_to_write + "\n")
+
+	else:
+		# Save network plot
+		save_network_plot(bn_model, NETWORK_PLOT_PATH)
+
+		# Plot variable effects
+		# Pass N_QUANTILES (config) for y-axis scaling and median calculation reference
+		plot_variable_effects(bn_model, discretized_df, ind_vars, dep_var, N_QUANTILES, OUTPUT_DIR, original_continuous_data)
 
 if __name__ == '__main__':
-	main()
+	ensure_output_dir()
+	if TRY_ALL_CROPS:
+		crops_avail = get_all_crops_available(DATASET_PATH)
+		if len(crops_avail) == 0: exit()
+
+		for i, crop_to_test in enumerate(crops_avail): 
+			print("\n\n\n\n\nCrop N ", i +1, ":\n\n\n\n\n")
+			sel_crop = crop_to_test
+			main_procedure()
+			exit()
+
+	else:   main_procedure()
