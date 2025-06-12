@@ -12,8 +12,8 @@ from pgmpy.estimators import MaximumLikelihoodEstimator, HillClimbSearch, Expert
 from pgmpy.inference import VariableElimination
 
 # Configuration
-N_QUANTILES = 4
-MAX_INDEGREE = 4
+N_QUANTILES = 3
+MAX_INDEGREE = 6
 TRY_ALL_CROPS = True
 sel_crop = "COMMEAT"  # ignored if TRY_ALL_CROPS = true
 RATIO = 'tot_surface' # 'productive_surface' # None
@@ -30,7 +30,7 @@ DEPENDENT_VAR_NAME = 'yield_ratio'
 
 FORBIDDEN_EDGES = [ (a, b) for a in VAR_TEMP for b in VAR_SOIL ] + [ (b, a) for a in VAR_TEMP for b in VAR_SOIL ] + [ (a, b) for a in VAR_SOIL for b in VAR_SOIL if a != b ] + [ (DEPENDENT_VAR_NAME, a) for a in INDEPENDENT_VARS ]
 
-INFERENCE_CONDITION = VAR_TEMP
+INFERENCE_CONDITION =  [] # VAR_SOIL
 
 def ensure_output_dir():
 	"""Ensures the output directory exists."""
@@ -61,14 +61,16 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 
 	print(f"Initial dataset shape: {df.shape}")
 
-	# Find the crop with the most rows
+	# Find the crop with the most rowsAdd commentMore actions
 	print(df['crop'].value_counts().head(10))
-	if sel_crop is str:
+	if isinstance(sel_crop, str):
 		most_frequent_crop = sel_crop
-	else:
+	elif sel_crop is True:
 		most_frequent_crop = df['crop'].mode()[0]
+	else:
+		most_frequent_crop = None
 	print(f"Most frequent crop: '{most_frequent_crop}'")
-	if sel_crop is True or sel_crop is str:
+	if most_frequent_crop is not None:
 		df_crop = df[df['crop'] == most_frequent_crop].copy()
 	else:
 		df_crop = df
@@ -413,7 +415,7 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		
 		plt.colorbar(label=f"P({dependent_var} state | {var_to_change} state)")
 		
-		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n(Others at median)", fontsize=14)
+		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n({INFERENCE_CONDITION} at median)", fontsize=14)
 		
 		plt.xlabel(f"State of '{var_to_change}'", fontsize=12)
 		plt.xticks(ticks=np.arange(num_var_to_change_states), labels=var_actual_states, rotation=45, ha="right")
