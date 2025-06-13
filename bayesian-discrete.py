@@ -14,7 +14,7 @@ from pgmpy.inference import VariableElimination
 # Configuration
 N_QUANTILES = 3
 MAX_INDEGREE = 6
-TRY_ALL_CROPS = True
+TRY_ALL_CROPS = False
 SEL_CROP = "WHEATD"  # ignored if TRY_ALL_CROPS = true
 RATIO = 'tot_surface' # 'productive_surface' # None
 
@@ -288,7 +288,7 @@ def save_network_plot(model, filepath):
 		print("Cannot plot: model is not a valid, non-empty BayesianNetwork instance.")
 		return
 
-	plt.figure(figsize=(14, 12)) # Increased size for better readability
+	plt.figure(figsize=(8, 8)) # Increased size for better readability
 	
 	# Use networkx for layout and drawing
 	graph = nx.DiGraph(model.edges())
@@ -304,10 +304,9 @@ def save_network_plot(model, filepath):
 		return
 
 	pos = nx.circular_layout(graph)
-	#pos = nx.spring_layout(graph, pos=pos, k=2)
 
-	nx.draw(graph, pos, with_labels=True, node_size=3500, node_color="skyblue", 
-			font_size=9, font_weight="bold", arrowsize=20, width=1.5,
+	nx.draw(graph, pos, with_labels=True, node_size=5000, node_color="skyblue", 
+			font_size=10, font_weight="bold", arrowsize=20, width=2,
 			edge_color="gray", style="solid") # Added edge_color and style
 	plt.title(f"Learned Bayesian Network Structure ({DEPENDENT_VAR_NAME} Analysis)", fontsize=16)
 	plt.tight_layout() # Adjust layout to prevent labels from overlapping
@@ -361,6 +360,27 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		if not var_actual_states:
 			print(f"	Warning: No unique states for '{var_to_change}'. Skipping.")
 			continue
+		
+		# Calculate correlation between the two variables using quantile indices
+		correlation_str = ""
+		try:
+			# Check if both variables exist in the data
+			if var_to_change in data.columns and dependent_var in data.columns:
+				# Convert quantile states (q0, q1, q2, ...) to numeric indices
+				def quantile_to_numeric(series):
+					return series.str.extract(r'q(\d+)')[0].astype(float)
+				
+				x_numeric = quantile_to_numeric(data[var_to_change])
+				y_numeric = quantile_to_numeric(data[dependent_var])
+				
+				# Remove NaN values for correlation calculation
+				valid_mask = ~(x_numeric.isna() | y_numeric.isna())
+				if valid_mask.sum() > 1:  # Need at least 2 valid pairs
+					correlation = x_numeric[valid_mask].corr(y_numeric[valid_mask])
+					if not np.isnan(correlation):
+						correlation_str = f"R = {correlation:.3f}"
+		except Exception as e_corr:
+			print(f"	Warning: Could not calculate correlation between '{var_to_change}' and '{dependent_var}': {e_corr}")
 		
 		num_var_to_change_states = len(var_actual_states)
 		heatmap_data = np.zeros((num_var_to_change_states, num_dep_var_states))
@@ -416,12 +436,15 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, num_quan
 		
 		plt.colorbar(label=f"P({dependent_var} state | {var_to_change} state)")
 		
-		plt.title(f"Probability of '{dependent_var}' States vs. '{var_to_change}' States\n({INFERENCE_CONDITION} at median)", fontsize=14)
+		title = f"Probability of '{dependent_var}' given '{var_to_change}'"
+		if len(INFERENCE_CONDITION) > 0: title += f"\n({INFERENCE_CONDITION} at median)"
+		if correlation_str: title += f"\n{correlation_str}"
+		plt.title(title, fontsize=14)
 		
-		plt.xlabel(f"State of '{var_to_change}'", fontsize=12)
+		plt.xlabel(f"{var_to_change}", fontsize=12)
 		plt.xticks(ticks=np.arange(num_var_to_change_states), labels=var_actual_states, rotation=45, ha="right")
 		
-		plt.ylabel(f"State of '{dependent_var}'", fontsize=12)
+		plt.ylabel(f"{dependent_var}", fontsize=12)
 		plt.yticks(ticks=np.arange(num_dep_var_states), labels=dep_var_model_states)
 		
 		plt.tight_layout()
