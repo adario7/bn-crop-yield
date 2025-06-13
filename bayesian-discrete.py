@@ -467,25 +467,21 @@ def main_procedure():
 		print("Evaluating the accuracy score")
 		with open("accuracy_by_inputs.csv", "a") as file:
 			infer = VariableElimination(bn_model)
-			line_to_write = sel_crop
 
-			for x  in INDEPENDENT_VARS:
-				y_true = []
-				y_pred = []
-				
-				file.write(line_to_write + ";")
+			y_true = []
+			y_pred = []
+			
+			file.write(sel_crop + ";")
 
-				for _, row in test_data.iterrows(): 
-					evidence = row.drop(x).to_dict()
-					true_value = int(row[x][1]) #conversion str quantil "qN" -> int N
-					pred_dist = infer.query([x], evidence=evidence, show_progress=False)
-					pred = pred_dist.values.argmax()
-					y_true.append(true_value)
-					y_pred.append(pred)
+			for _, row in test_data.iterrows(): 
+				evidence = row.drop(DEPENDENT_VAR_NAME).to_dict()
+				true_value = int(row[DEPENDENT_VAR_NAME][1]) #conversion str quantil "qN" -> int N
+				pred_dist = infer.query([DEPENDENT_VAR_NAME], evidence=evidence, show_progress=False)
+				pred = pred_dist.values.argmax()
+				y_true.append(true_value)
+				y_pred.append(pred)
 
-				line_to_write = str(accuracy_score(y_true, y_pred))
-
-			file.write(line_to_write + "\n")
+			file.write(str(accuracy_score(y_true, y_pred)) + "\n")
 
 	else:
 		# Save network plot
