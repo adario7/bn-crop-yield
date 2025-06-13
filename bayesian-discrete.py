@@ -15,12 +15,13 @@ from pgmpy.inference import VariableElimination
 N_QUANTILES = 3
 MAX_INDEGREE = 6
 TRY_ALL_CROPS = True
-sel_crop = "COMMEAT"  # ignored if TRY_ALL_CROPS = true
+SEL_CROP = "WHEATD"  # ignored if TRY_ALL_CROPS = true
 RATIO = 'tot_surface' # 'productive_surface' # None
 
 DATASET_PATH = 'build/dataset.csv.gz'
 OUTPUT_DIR = 'build/'
 NETWORK_PLOT_PATH = os.path.join(OUTPUT_DIR, 'bayesian-network.png')
+CROP_ACC_PATH = os.path.join(OUTPUT_DIR, 'accuracy-by-crop.csv')
 
 # Define independent and dependent variables
 VAR_TEMP = [ 'mean_temperature', 'precipitation', 'heat_days', 'heavy_rain_days', 'dry_days' ]
@@ -63,9 +64,9 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 
 	# Find the crop with the most rowsAdd commentMore actions
 	print(df['crop'].value_counts().head(10))
-	if isinstance(sel_crop, str):
-		most_frequent_crop = sel_crop
-	elif sel_crop is True:
+	if isinstance(SEL_CROP, str):
+		most_frequent_crop = SEL_CROP
+	elif SEL_CROP is True:
 		most_frequent_crop = df['crop'].mode()[0]
 	else:
 		most_frequent_crop = None
@@ -95,7 +96,7 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 		return None, None, None, None
 
 	print("Data sample:")
-	print(df_crop.sample(n=5))
+	print(df_crop.sample(n=min(5, len(df_crop))))
 
 	discretized_df = pd.DataFrame()
 	# Generate base quantile labels, e.g., ['q0', 'q1', ..., 'q9'] for num_quantiles_config=10
@@ -172,7 +173,7 @@ def load_and_preprocess_data(filepath, num_quantiles_config):
 		print(discretized_df.isnull().sum())
 		return None, None, None, None
 
-	return discretized_df, INDEPENDENT_VARS, DEPENDENT_VAR_NAME, original_continuous_data
+	return discretized_df
 
 
 def discover_causal_structure_pc(data, independent_vars, dependent_var):
@@ -318,7 +319,7 @@ def save_network_plot(model, filepath):
 	plt.close()
 
 
-def plot_variable_effects(model, data, independent_vars, dependent_var, num_quantiles_config, output_dir, original_continuous_data):
+def plot_variable_effects(model, data, independent_vars, dependent_var, num_quantiles_config, output_dir):
 	"""
 	For each independent var, plots a heatmap of how its change affects the yield ratio's
 	quantile probabilities, fixing other variables to their median quantile.
@@ -439,25 +440,27 @@ def main_procedure():
 	Main function to run the causal inference pipeline
 	"""
 	# Pass N_QUANTILES (the configuration for target quantiles) to preprocessing
-	discretized_df, ind_vars, dep_var, original_continuous_data = load_and_preprocess_data(DATASET_PATH, N_QUANTILES)
+	discretized_df = load_and_preprocess_data(DATASET_PATH, N_QUANTILES)
 	if discretized_df is None or discretized_df.empty:
 		print("Halting execution due to data loading/preprocessing errors.")
+		return
+	if TRY_ALL_CROPS and len(discretized_df) < 100:
+		print("Halting execution due to small dataset size.")
 		return
 	
 	test_data = None
 	if TRY_ALL_CROPS: 
-		discretized_df, test_data   = train_test_split(discretized_df,           test_size=0.2, random_state=42)
-		original_continuous_data, _ = train_test_split(original_continuous_data, test_size=0.2, random_state=42)
+		discretized_df, test_data = train_test_split(discretized_df, test_size=0.2, random_state=42)
 
 	# Causal Discovery
-	causal_model_structure_dag = discover_causal_structure_pc(discretized_df, ind_vars, dep_var)
+	causal_model_structure_dag = discover_causal_structure_pc(discretized_df, INDEPENDENT_VARS, DEPENDENT_VAR_NAME)
 	
 	if causal_model_structure_dag is None:
 		print("Causal discovery did not yield a valid DAG structure. Cannot proceed with training.")
 		return
 
 	# Train Bayesian Network
-	bn_model = train_bayesian_network(discretized_df, causal_model_structure_dag, ind_vars, dep_var)
+	bn_model = train_bayesian_network(discretized_df, causal_model_structure_dag, INDEPENDENT_VARS, DEPENDENT_VAR_NAME)
 
 	if bn_model is None:
 		print("Halting execution due to Bayesian Network training errors.")
@@ -465,22 +468,25 @@ def main_procedure():
 
 	if TRY_ALL_CROPS: 
 		print("Evaluating the accuracy score")
-		with open("accuracy_by_inputs.csv", "a") as file:
+		with open(CROP_ACC_PATH, "a") as file:
 			infer = VariableElimination(bn_model)
 
-			y_true = []
-			y_pred = []
-			
-			file.write(sel_crop + ";")
-
+			y_true, y_pred = [], []
 			for _, row in test_data.iterrows(): 
-				evidence = row.drop(DEPENDENT_VAR_NAME).to_dict()
-				true_value = int(row[DEPENDENT_VAR_NAME][1]) #conversion str quantil "qN" -> int N
-				pred_dist = infer.query([DEPENDENT_VAR_NAME], evidence=evidence, show_progress=False)
-				pred = pred_dist.values.argmax()
+				try:
+					evidence = row.drop(DEPENDENT_VAR_NAME).to_dict()
+					true_value = int(row[DEPENDENT_VAR_NAME][1]) #conversion str quantil "qN" -> int N
+					pred_dist = infer.query([DEPENDENT_VAR_NAME], evidence=evidence, show_progress=False)
+					pred = pred_dist.values.argmax()
+				except KeyError as e: # may happen for small datasets when a value appears in the test set and never in the train set
+					print(f"KeyError: {e}")
+					continue
 				y_true.append(true_value)
 				y_pred.append(pred)
-
+			
+			file.write(SEL_CROP + ";")
+			file.write(str(len(discretized_df)) + ";")
+			file.write(str(len(y_true)) + ";")
 			file.write(str(accuracy_score(y_true, y_pred)) + "\n")
 
 	else:
@@ -489,7 +495,8 @@ def main_procedure():
 
 		# Plot variable effects
 		# Pass N_QUANTILES (config) for y-axis scaling and median calculation reference
-		plot_variable_effects(bn_model, discretized_df, ind_vars, dep_var, N_QUANTILES, OUTPUT_DIR, original_continuous_data)
+		plot_variable_effects(bn_model, discretized_df,
+						INDEPENDENT_VARS, DEPENDENT_VAR_NAME, N_QUANTILES, OUTPUT_DIR)
 
 if __name__ == '__main__':
 	ensure_output_dir()
@@ -497,9 +504,14 @@ if __name__ == '__main__':
 		crops_avail = get_all_crops_available(DATASET_PATH)
 		if len(crops_avail) == 0: exit()
 
+		with open(CROP_ACC_PATH, "w") as file:
+			file.write("crop;n_train;n_test;test_accuracy\n")
+
 		for i, crop_to_test in enumerate(crops_avail): 
 			print("\n\n\n\n\nCrop N ", i +1, ":\n\n\n\n\n")
-			sel_crop = crop_to_test
+			SEL_CROP = crop_to_test
 			main_procedure()
+
+		print("All crops tested.")
 
 	else:   main_procedure()
