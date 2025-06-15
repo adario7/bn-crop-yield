@@ -191,7 +191,7 @@ def save_network_plot(model, filepath):
 					coeff = cpd.beta[parent_idx + 1]
 		
 		edge_coeffs[edge] = coeff
-		coeff = -sqrt(abs(coeff)) if coeff < 0 else sqrt(coeff)
+		coeff *= 2.5 * sqrt(model.get_cpds(parent).std / cpd.std)
 		
 		# Color based on coefficient value
 		if coeff > 0.01:  # Positive influence - green gradient
@@ -204,7 +204,7 @@ def save_network_plot(model, filepath):
 			edge_colors.append((0, 0, 0))  # Black
 		
 		# Width based on absolute coefficient value
-		width = max(1.5, min(abs(coeff) * 3.5, 6))  # Scale between 1 and 5
+		width = max(1.5, min(abs(coeff) * 3, 6))  # Scale between 1 and 5
 		edge_widths.append(width)
 	
 	# Draw nodes
@@ -222,7 +222,7 @@ def save_network_plot(model, filepath):
 	for node in model.nodes():
 		cpd = model.get_cpds(node)
 		node_pos = pos[node]
-		param_text = f"{cpd.beta[0]:.1f} ± {np.sqrt(cpd.std):.1f}\n"
+		param_text = f"σ = {np.sqrt(cpd.std):.1f}\n"
 		
 		text_x = node_pos[0]
 		text_y = node_pos[1] - 0.025
