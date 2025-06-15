@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+from math import sqrt
 
 from pgmpy.models import LinearGaussianBayesianNetwork
 from pgmpy.estimators import HillClimbSearch, ExpertKnowledge
@@ -11,12 +12,12 @@ from pgmpy.inference import VariableElimination
 
 # Configuration
 MAX_INDEGREE = None
-ONE_CROP = "PEAR"
+ONE_CROP = "WHEATD"
 RATIO = 'productive_surface' # 'tot_surface', 'productive_surface' or None
 
 DATASET_PATH = 'build/dataset.csv.gz'
 OUTPUT_DIR = 'build/'
-NETWORK_PLOT_PATH = os.path.join(OUTPUT_DIR, 'bayesian-network.png')
+NETWORK_PLOT_PATH = os.path.join(OUTPUT_DIR, 'continuous-network.png')
 
 # Define independent and dependent variables
 VAR_TEMP = [ 'mean_temperature', 'precipitation', 'heat_days', 'heavy_rain_days', 'dry_days' ]
@@ -29,7 +30,7 @@ FORBIDDEN_EDGES = [ (a, b) for a in VAR_TEMP for b in VAR_SOIL ] \
 	+ [ (a, b) for a in VAR_SOIL for b in VAR_SOIL if a != b ] \
 	+ [ (DEPENDENT_VAR_NAME, a) for a in INDEPENDENT_VARS ]
 
-INFERENCE_CONDITION = VAR_TEMP
+INFERENCE_CONDITION = []
 
 def ensure_output_dir():
 	"""Ensures the output directory exists."""
@@ -143,11 +144,8 @@ def train_bayesian_network(data, structure_dag, independent_vars, dependent_var)
 		if dependent_var in bn_model.nodes():
 			cpd = bn_model.get_cpds(dependent_var)
 			print(f"\nLinear model for {dependent_var}:")
-			print(f"  Mean: {cpd}")
-			#print(f"  Mean: {cpd.mean}")
-			#print(f"  Variance: {cpd.variance}")
-			#if hasattr(cpd, 'beta'):
-				#print(f"  Beta coefficients: {cpd.beta}")
+			print(f"  CPD: {cpd}")
+			print(f"  CPD: {cpd.__dict__}")
 
 	except Exception as e:
 		print(f"ERROR: Failed to fit Linear Gaussian Bayesian Network: {e}")
@@ -155,37 +153,94 @@ def train_bayesian_network(data, structure_dag, independent_vars, dependent_var)
 		
 	return bn_model
 
+
 def save_network_plot(model, filepath):
-	"""Saves a plot of the Bayesian Network."""
+	"""Saves a plot of the Bayesian Network with learned parameters displayed."""
 	print(f"\nSaving network plot to '{filepath}'...")
 	if not model or not model.nodes():
 		print("Cannot plot: model is not valid or empty.")
 		return
-
-	plt.figure(figsize=(14, 12))
+	plt.figure(figsize=(12, 12))
+	plt.axis('off')
 	
 	graph = nx.DiGraph(model.edges())
 	for node in model.nodes():
 		if node not in graph:
 			graph.add_node(node)
-
 	if not graph.nodes():
 		print("Graph has no nodes to plot.")
 		plt.close()
 		return
-
 	pos = nx.circular_layout(graph)
-	nx.draw(graph, pos, with_labels=True, node_size=3500, node_color="lightcoral", 
-			font_size=9, font_weight="bold", arrowsize=20, width=1.5,
-			edge_color="gray", style="solid")
-	plt.title(f"Learned Linear Gaussian Bayesian Network ({DEPENDENT_VAR_NAME} Analysis)", fontsize=16)
+	
+	# Collect edge coefficients and calculate colors/widths
+	edge_coeffs = {}
+	edge_colors = []
+	edge_widths = []
+	
+	for edge in graph.edges():
+		parent, child = edge
+		cpd = model.get_cpds(child)
+		coeff = 0
+		
+		if hasattr(cpd, 'beta') and cpd.beta is not None:
+			parents = list(model.predecessors(child))
+			if parent in parents:
+				parent_idx = parents.index(parent)
+				if parent_idx + 1 < len(cpd.beta):
+					coeff = cpd.beta[parent_idx + 1]
+		
+		edge_coeffs[edge] = coeff
+		coeff = -sqrt(abs(coeff)) if coeff < 0 else sqrt(coeff)
+		
+		# Color based on coefficient value
+		if coeff > 0.01:  # Positive influence - green gradient
+			intensity = min(abs(coeff) * 2, 1.0)  # Scale intensity
+			edge_colors.append((0, intensity, 0))  # Green
+		elif coeff < -0.01:  # Negative influence - red gradient
+			intensity = min(abs(coeff) * 2, 1.0)
+			edge_colors.append((intensity, 0, 0))  # Red
+		else:  # Neutral - black
+			edge_colors.append((0, 0, 0))  # Black
+		
+		# Width based on absolute coefficient value
+		width = max(1.5, min(abs(coeff) * 3.5, 6))  # Scale between 1 and 5
+		edge_widths.append(width)
+	
+	# Draw nodes
+	nx.draw_networkx_nodes(graph, pos, node_size=10000, node_color="skyblue", alpha=1)
+	
+	# Draw edges with colors and widths, stopping at node borders
+	nx.draw_networkx_edges(graph, pos, edge_color=edge_colors, width=edge_widths, 
+						   arrowsize=35, arrowstyle='->', alpha=0.8, 
+						   node_size=10000, min_source_margin=5, min_target_margin=5)
+	
+	# Draw node labels
+	nx.draw_networkx_labels(graph, pos, font_size=12, font_weight="bold")
+	
+	# Add parameter text on nodes
+	for node in model.nodes():
+		cpd = model.get_cpds(node)
+		node_pos = pos[node]
+		param_text = f"{cpd.beta[0]:.1f} ± {np.sqrt(cpd.std):.1f}\n"
+		
+		text_x = node_pos[0]
+		text_y = node_pos[1] - 0.025
+		
+		plt.text(text_x, text_y, param_text.strip(), 
+				fontsize=10, verticalalignment='top', horizontalalignment='center')
+	
+	# Add edge labels
+	edge_labels = {edge: f"{coeff:.3f}" for edge, coeff in edge_coeffs.items() if coeff != 0}
+	
+	if edge_labels:
+		nx.draw_networkx_edge_labels(graph, pos, edge_labels, font_size=12, 
+									bbox=dict(boxstyle="round,pad=0.1", facecolor="white", alpha=0.7))
+	
 	plt.tight_layout()
 	
-	try:
-		plt.savefig(filepath, dpi=150)
-		print(f"Network plot saved to {filepath}")
-	except Exception as e:
-		print(f"Error saving plot: {e}")
+	plt.savefig(filepath, dpi=150, bbox_inches='tight')
+	print(f"Network plot with parameters saved to {filepath}")
 	plt.close()
 
 
@@ -241,7 +296,7 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, output_d
 
     # Get all variables that are actually in the model
     model_vars = list(model.nodes())
-    available_independent_vars = [var for var in independent_vars if var in model_vars and var in INFERENCE_CONDITION]
+    available_independent_vars = [var for var in independent_vars if var in model_vars and var in INDEPENDENT_VARS]
     
     if dependent_var not in model_vars:
         print(f"Dependent variable '{dependent_var}' not in the learned model. Cannot plot effects.")
@@ -313,8 +368,7 @@ def plot_variable_effects(model, data, independent_vars, dependent_var, output_d
         # Formatting
         plt.xlabel(f'{var_to_change.replace("_", " ").title()}')
         plt.ylabel(f'{dependent_var.replace("_", " ").title()}')
-        plt.title(f'Effect of {var_to_change.replace("_", " ").title()} on {dependent_var.replace("_", " ").title()}\n'
-                 f'(Other variables fixed at median values)')
+        plt.title(f'Effect of {var_to_change.replace("_", " ").title()} on {dependent_var.replace("_", " ").title()}')
         plt.legend()
         plt.grid(True, alpha=0.3)
         
